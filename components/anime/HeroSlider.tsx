@@ -30,13 +30,27 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ items }) => {
     return () => clearInterval(interval);
   }, [items, handleNext]);
 
-  // Auto scroll side list to active item
+  // Auto scroll side list to active item (faqat containerning o'zini aylantiradi, butun sahifani emas)
   useEffect(() => {
-    if (sideListRef.current) {
-      const activeBtn = sideListRef.current.children[currentIndex] as HTMLElement;
-      if (activeBtn) {
-        activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
+    const container = sideListRef.current;
+    if (!container) return;
+
+    const activeBtn = container.children[currentIndex] as HTMLElement;
+    if (!activeBtn) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const btnRect = activeBtn.getBoundingClientRect();
+
+    if (btnRect.top < containerRect.top) {
+      container.scrollBy({
+        top: btnRect.top - containerRect.top,
+        behavior: 'smooth',
+      });
+    } else if (btnRect.bottom > containerRect.bottom) {
+      container.scrollBy({
+        top: btnRect.bottom - containerRect.bottom,
+        behavior: 'smooth',
+      });
     }
   }, [currentIndex]);
 

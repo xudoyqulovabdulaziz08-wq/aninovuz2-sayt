@@ -13,7 +13,7 @@ interface AnimeCardProps {
 export const AnimeCard: React.FC<AnimeCardProps> = ({ anime, badgeType = 'AUTO' }) => {
   const rawRating = Number(anime.average_rating || 0);
   const rating = rawRating > 0 ? rawRating.toFixed(1) : '0';
-  const isHot = badgeType === 'HOT' || (badgeType === 'AUTO' && (anime.views_total > 10 || rawRating >= 8.5));
+  const isHot = badgeType === 'HOT' || (badgeType === 'AUTO' && ((anime.views_total || 0) > 10 || rawRating >= 8.5));
   const isNew = badgeType === 'NEW' || (badgeType === 'AUTO' && !isHot && anime.year >= 2024);
 
   return (

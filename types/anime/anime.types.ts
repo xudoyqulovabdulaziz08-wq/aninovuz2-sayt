@@ -1,15 +1,18 @@
 export interface AnimeBase {
   anime_id: number;
+  id?: number;
   title_uz: string;
   title_en: string;
   title_ru?: string;
   type: string;
   year: number;
   poster_r2_url: string;
-  average_rating: number;
-  rating_count: number;
-  views_total: number;
-  views_week: number;
+  poster?: string;
+  average_rating?: number;
+  rating?: number;
+  rating_count?: number;
+  views_total?: number;
+  views_week?: number;
   genres: string[];
   dubbers?: string[];
   episodes_count?: number;

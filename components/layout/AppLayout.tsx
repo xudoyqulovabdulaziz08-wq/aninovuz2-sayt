@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
+import { SiteLoadingScreen } from './SiteLoadingScreen';
+import { Footer } from './Footer';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -29,6 +31,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#000000] text-gray-100 transition-colors duration-200">
+      {/* Global Initial Loading Screen with Spinning Shuriken */}
+      <SiteLoadingScreen />
+
       {/* Top Sticky Header */}
       <Header />
 
@@ -53,8 +58,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         />
 
         {/* Right Main Page Content */}
-        <main className="flex-1 min-w-0 p-3 sm:p-5 lg:p-6 overflow-y-auto transition-all duration-300">
-          {children}
+        <main className="flex-1 min-w-0 flex flex-col p-3 sm:p-5 lg:p-6 overflow-y-auto transition-all duration-300">
+          <div className="flex-1">
+            {children}
+          </div>
+          <Footer />
         </main>
       </div>
     </div>
