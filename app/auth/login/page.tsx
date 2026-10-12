@@ -37,9 +37,8 @@ export default function LoginPage() {
         if (tgWebApp?.initData) {
           setIsAutoConnecting(true);
           const res = await api.post('/api/auth/webapp', { initData: tgWebApp.initData });
-          if (res.data?.success && res.data?.token && res.data?.user) {
-            localStorage.setItem('auth_token', res.data.token);
-            localStorage.setItem('user_data', JSON.stringify(res.data.user));
+          if (res.data?.success) {
+            // Backend HttpOnly cookie o'rnatdi — localStorage ishlatilmaydi
             setSuccessMsg('Telegram WebApp orqali muvaffaqiyatli kirdingiz!');
             setTimeout(() => {
               window.location.href = '/';

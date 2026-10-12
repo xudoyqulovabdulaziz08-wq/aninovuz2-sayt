@@ -43,22 +43,22 @@ export const Footer: React.FC = () => {
             </h4>
             <ul className="space-y-2 text-xs sm:text-sm">
               <li>
-                <Link href="/" className="text-gray-400 hover:text-white transition-colors block py-0.5">
+                <Link href="/" draggable={false} className="text-gray-400 hover:text-white transition-colors block py-0.5">
                   Bosh sahifa
                 </Link>
               </li>
               <li>
-                <Link href="/animes" className="text-gray-400 hover:text-white transition-colors block py-0.5">
+                <Link href="/animes" draggable={false} className="text-gray-400 hover:text-white transition-colors block py-0.5">
                   Animelar
                 </Link>
               </li>
               <li>
-                <Link href="/genres" className="text-gray-400 hover:text-white transition-colors block py-0.5">
+                <Link href="/genres" draggable={false} className="text-gray-400 hover:text-white transition-colors block py-0.5">
                   Janrlar
                 </Link>
               </li>
               <li>
-                <Link href="/dubbers" className="text-gray-400 hover:text-white transition-colors block py-0.5">
+                <Link href="/dubbers" draggable={false} className="text-gray-400 hover:text-white transition-colors block py-0.5">
                   Dubberlar
                 </Link>
               </li>
@@ -117,11 +117,11 @@ export const Footer: React.FC = () => {
             © 2026 <span className="text-gray-200 font-bold">AniNovuz</span>. Barcha huquqlar himoyalangan.
           </div>
           <div className="flex items-center justify-center gap-3 sm:gap-4 text-[11px] sm:text-xs">
-            <Link href="/terms" className="hover:text-gray-300 transition-colors">
+            <Link href="/terms" draggable={false} className="hover:text-gray-300 transition-colors">
               Foydalanish shartlari
             </Link>
             <span className="text-gray-700">•</span>
-            <Link href="/dmca" className="hover:text-gray-300 transition-colors">
+            <Link href="/dmca" draggable={false} className="hover:text-gray-300 transition-colors">
               DMCA / Mualliflar
             </Link>
           </div>

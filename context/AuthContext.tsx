@@ -6,7 +6,6 @@ import { authApi } from '@/lib/api';
 
 interface AuthContextType {
   user: UserProfile | null;
-  token: string | null;
   isLoading: boolean;
   login: (userId: number | string, code: string) => Promise<LoginResponse>;
   logout: () => Promise<void>;
@@ -16,7 +15,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  token: null,
   isLoading: true,
   login: async () => ({ success: false, message: '' }),
   logout: async () => {},
@@ -26,49 +24,28 @@ const AuthContext = createContext<AuthContextType>({
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initial session restoration from localStorage & /api/auth/me
+  // Sahifa yuklanganda HttpOnly cookie orqali sessiyani tekshirish
   useEffect(() => {
     let isMounted = true;
 
     const restoreSession = async () => {
       try {
-        const storedToken = localStorage.getItem('auth_token');
-        const storedUser = localStorage.getItem('user_data');
-
-        if (storedToken) {
-          setToken(storedToken);
-          if (storedUser) {
-            try {
-              setUser(JSON.parse(storedUser));
-            } catch (e) {
-              console.warn('Invalid stored user data');
-            }
-          }
-
-          // Live session verification with backend
-          const meRes = await authApi.getMe().catch(() => null);
-          if (isMounted) {
-            if (meRes && meRes.success && meRes.authenticated && meRes.user) {
-              setUser(meRes.user);
-              localStorage.setItem('user_data', JSON.stringify(meRes.user));
-            } else if (meRes && !meRes.authenticated) {
-              // Token expired or invalid
-              localStorage.removeItem('auth_token');
-              localStorage.removeItem('user_data');
-              setToken(null);
-              setUser(null);
-            }
+        // Cookie avtomatik yuboriladi (withCredentials: true)
+        const meRes = await authApi.getMe().catch(() => null);
+        if (isMounted) {
+          if (meRes && meRes.success && meRes.authenticated && meRes.user) {
+            setUser(meRes.user);
+          } else {
+            setUser(null);
           }
         }
       } catch (err) {
         console.error('Session restore error:', err);
+        if (isMounted) setUser(null);
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       }
     };
 
@@ -81,12 +58,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (userId: number | string, code: string): Promise<LoginResponse> => {
     try {
+      // Backend login qiladi va HttpOnly cookie o'rnatadi
       const res = await authApi.login(userId, code);
-      if (res.success && res.token && res.user) {
-        localStorage.setItem('auth_token', res.token);
-        localStorage.setItem('user_data', JSON.stringify(res.user));
-        setToken(res.token);
-        setUser(res.user);
+      if (res.success) {
+        // Cookie o'rnatildi — /api/auth/me orqali foydalanuvchini olamiz
+        const meRes = await authApi.getMe().catch(() => null);
+        if (meRes && meRes.success && meRes.authenticated && meRes.user) {
+          setUser(meRes.user);
+        } else if (res.user) {
+          // Fallback: login javobidagi user ma'lumotidan foydalanamiz
+          setUser(res.user);
+        }
       }
       return res;
     } catch (err: any) {
@@ -99,9 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await authApi.logout().catch(() => {});
     } finally {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user_data');
-      setToken(null);
+      // Backend cookie-ni o'chiradi, biz faqat React state-ni tozalaymiz
       setUser(null);
     }
   };
@@ -111,7 +91,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await authApi.getMe();
       if (res.success && res.authenticated && res.user) {
         setUser(res.user);
-        localStorage.setItem('user_data', JSON.stringify(res.user));
+      } else {
+        setUser(null);
       }
     } catch (err) {
       console.error('Refresh user error:', err);
@@ -122,7 +103,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         user,
-        token,
         isLoading,
         login,
         logout,
@@ -136,4 +116,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useAuth = () => useContext(AuthContext);
-

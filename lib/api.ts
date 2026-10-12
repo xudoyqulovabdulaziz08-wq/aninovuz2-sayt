@@ -5,20 +5,10 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://aninovuz-backen
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  // withCredentials: true, // faqat auth talab qiladigan endpointlar uchun kerakli bo'ladi
+  withCredentials: true, // HttpOnly cookie auth uchun — cookie avtomatik yuboriladi
   headers: {
     'Content-Type': 'application/json',
   },
-});
-
-api.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  return config;
 });
 
 const CACHE_KEY = 'aninovuz_all_animes_cache';

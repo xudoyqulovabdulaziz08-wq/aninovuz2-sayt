@@ -13,9 +13,12 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ isAuthPage = false }) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { user, logout } = useAuth();
-
+useEffect(() => {
+    setIsMounted(true);
+  }, []);
   // Close user menu on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -102,7 +105,9 @@ export const Header: React.FC<HeaderProps> = ({ isAuthPage = false }) => {
           </a>
 
           {/* User Profile or Login Button */}
-          {user ? (
+          {/* User Profile yoki Login tugmasi */}
+        {isMounted && (
+          user ? (
             <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => setIsUserMenuOpen((prev) => !prev)}
@@ -155,7 +160,8 @@ export const Header: React.FC<HeaderProps> = ({ isAuthPage = false }) => {
             >
               Kirish
             </Link>
-          ) : null}
+          ) : null
+        )}
         </div>
       </header>
 
