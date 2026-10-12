@@ -44,7 +44,7 @@ export interface GenreItem {
 }
 
 export interface DubberItem {
-  id: number;
+  id?: number;
   name: string;
   anime_count: number;
 }
@@ -69,3 +69,23 @@ export interface AnimeDetail extends AnimeBase {
   episodes: AnimeEpisode[];
   similar_animes: AnimeBase[];
 }
+
+export interface UserProfile {
+  userId: number;
+  username: string | null;
+  status: string;
+  isVip: boolean;
+  vipExpireDate: string | null;
+  points: number;
+  joinedAt: string;
+  lastActiveAt: string | null;
+  sleepReminderEnabled: boolean;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  message: string;
+  token?: string;
+  user?: UserProfile;
+}
+

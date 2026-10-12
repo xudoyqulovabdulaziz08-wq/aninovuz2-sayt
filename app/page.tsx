@@ -1,19 +1,17 @@
-import { Suspense } from 'react';
-import { animeApi } from '@/lib/api';
+'use client';
+
+import React from 'react';
+import { useAnimeData } from '@/context/AnimeDataContext';
 import { HeroSlider } from '@/components/anime/HeroSlider';
 import { AnimeRowSection } from '@/components/anime/AnimeRowSection';
-import { HomepageData } from '@/types/anime/anime.types';
 import { AlertCircle } from 'lucide-react';
 
-async function HomeContent() {
-  let homepageData: HomepageData | null = null;
-  let errorMessage: string | null = null;
+export default function HomePage() {
+  const { homepageData, isInitialLoaded, error } = useAnimeData();
 
-  try {
-    homepageData = await animeApi.getHomepage();
-  } catch (err: any) {
-    console.error('Homepage fetch error:', err?.message);
-    errorMessage = err?.message || 'Ma\'lumotlarni yuklashda xatolik yuz berdi';
+  if (!isInitialLoaded && !homepageData) {
+    // Initial yuklanish paytida SiteLoadingScreen to'liq ekranni qoplab turadi, ortda bo'sh turadi
+    return <div className="min-h-screen" />;
   }
 
   if (!homepageData) {
@@ -24,15 +22,15 @@ async function HomeContent() {
         </div>
         <h2 className="text-lg font-bold text-gray-200">Serverga ulanishda xatolik</h2>
         <p className="text-xs text-gray-400 mt-1 max-w-sm">
-          {errorMessage || 'Backend ma\'lumotlar bazasi yoki kesh yangilanmoqda. Iltimos qayta urinib ko\'ring.'}
+          {error || 'Backend ma\'lumotlar bazasi yoki kesh yangilanmoqda. Iltimos qayta urinib ko\'ring.'}
         </p>
       </div>
     );
   }
 
   return (
-    <div className="w-full space-y-2">
-      {/* 1. Hero Feature Banner Slider (Matches Image) */}
+    <div className="w-full space-y-2 select-none animate-in fade-in duration-200">
+      {/* 1. Hero Feature Banner Slider */}
       {homepageData.hero_slider && homepageData.hero_slider.length > 0 && (
         <HeroSlider items={homepageData.hero_slider} />
       )}
@@ -41,9 +39,8 @@ async function HomeContent() {
       <AnimeRowSection
         id="popular"
         title="Trenddagi animelar"
-        
         items={homepageData.popular}
-        viewAllLink="/anime?sort=popular"
+        viewAllLink="/animes?sort=Mashhurligi"
         badgeType="HOT"
       />
 
@@ -51,9 +48,8 @@ async function HomeContent() {
       <AnimeRowSection
         id="latest"
         title="Yangi animelar"
-        
         items={homepageData.latest}
-        viewAllLink="/anime?sort=latest"
+        viewAllLink="/animes?sort=Yangilik"
         badgeType="NEW"
       />
 
@@ -61,9 +57,8 @@ async function HomeContent() {
       <AnimeRowSection
         id="top-rated"
         title="Eng yaxshi animelar"
-        
         items={homepageData.top_rated}
-        viewAllLink="/anime?sort=top_rated"
+        viewAllLink="/animes?sort=Reyting"
         badgeType="HOT"
       />
 
@@ -72,9 +67,8 @@ async function HomeContent() {
         <AnimeRowSection
           id="tv-series"
           title="Anime Seriallar"
-          
           items={homepageData.tv_series}
-          viewAllLink="/anime?type=TV+SERIES"
+          viewAllLink="/animes"
         />
       )}
 
@@ -83,56 +77,19 @@ async function HomeContent() {
         <AnimeRowSection
           id="movies"
           title="Anime Filmlar"
-          
           items={homepageData.movies}
-          viewAllLink="/movies"
+          viewAllLink="/animes"
         />
       )}
-      
+
       {/* 7. 🎲 Tasodifiy animelar (Random) */}
       {homepageData.random && homepageData.random.length > 0 && (
         <AnimeRowSection
           id="random"
           title="Tasodifiy animelar"
-          
           items={homepageData.random}
         />
       )}
     </div>
-  );
-}
-
-function HomeSkeleton() {
-  return (
-    <div className="w-full animate-pulse space-y-8">
-      {/* Hero Banner Skeleton */}
-      <div className="w-full h-80 sm:h-96 rounded-3xl bg-[#13151f] border border-white/5" />
-
-      {/* Row Section Skeletons */}
-      {Array.from({ length: 3 }).map((_, secIdx) => (
-        <div key={secIdx} className="space-y-3">
-          <div className="flex justify-between items-center">
-            <div className="h-6 w-40 rounded-lg bg-[#181a26]" />
-            <div className="h-4 w-24 rounded-lg bg-[#181a26]" />
-          </div>
-          <div className="flex gap-4 overflow-hidden">
-            {Array.from({ length: 6 }).map((_, cardIdx) => (
-              <div
-                key={cardIdx}
-                className="w-36 sm:w-44 md:w-48 aspect-[3/4] rounded-2xl bg-[#13151f] shrink-0 border border-white/5"
-              />
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export default function HomePage() {
-  return (
-    <Suspense fallback={<HomeSkeleton />}>
-      <HomeContent />
-    </Suspense>
   );
 }

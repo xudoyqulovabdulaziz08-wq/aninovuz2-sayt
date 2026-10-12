@@ -14,7 +14,7 @@ import {
   Sparkles,
   Heart,
   History,
-  Settings,
+
   Bot ,
   ChevronLeft,
   MessageCircle,
@@ -32,7 +32,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
 
   const mainLinks = [
     { label: 'Bosh sahifa', href: '/', icon: Home },
-    { label: 'Animelar', href: '/anime', icon: Tv },
+    { label: 'Animelar', href: '/animes', icon: Tv },
     { label: 'Janrlar', href: '/genres', icon: Tags  },
     { label: 'Dubberlar', href: '/dubbers', icon: Mic2 },
   ];
@@ -50,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
     {label: 'Sharhlarim', href: '/user/comments', icon: MessageCircle  },
     { label: 'Baholarim', href: '/user/ratings', icon: Star  },
     { label: 'Tarix', href: '/user/history', icon: History },
-    { label: 'Sozlamalar', href: '/user/settings', icon: Settings },
+
   ];
 
   const isLinkActive = (href: string) => {
@@ -90,6 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                     ? 'bg-red-600/15 text-red-500 border border-red-600/30 shadow-sm'
                     : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
                 }`}
+                draggable={false} 
               >
                 <Icon className={`w-4 h-4 ${active ? 'text-red-500' : 'text-gray-400'}`} />
                 <span>{item.label}</span>
@@ -111,6 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                   key={item.label}
                   href={item.href}
                   className="flex items-center gap-3 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all"
+                  draggable={false}
                 >
                   <Icon className="w-4 h-4 text-gray-400" />
                   <span>{item.label}</span>
@@ -138,6 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                       ? 'bg-red-600/15 text-red-500 border border-red-600/30'
                       : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
                   }`}
+                  draggable={false}
                 >
                   <Icon className="w-4 h-4 text-gray-400" />
                   <span>{item.label}</span>
@@ -160,10 +163,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
           Yangi animelar va qiziqarli funksiyalar botda!
         </p>
         <a
-          href="https://t.me/aninov_uz_bot"
+          href="https://t.me/Aninovuz_bot"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-xl bg-red-600/20 hover:bg-red-600 border border-red-600/30 text-red-400 hover:text-white text-xs font-bold transition-all shadow-sm group"
+          draggable={false}
+          
         >
           <Bot  className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
           <span>Botga o'tish</span>
@@ -173,32 +178,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   );
 
   return (
-    <>
-      {/* Desktop Collapsible Sidebar */}
-      <aside
-        className={`hidden lg:block shrink-0 sticky top-16 h-[calc(100vh-4rem)] border-r border-white/5 overflow-y-auto no-scrollbar bg-[#000000] transition-all duration-300 ease-in-out ${
-          isOpen ? 'w-56 opacity-100' : 'w-0 opacity-0 overflow-hidden border-none pointer-events-none'
-        }`}
-      >
-        <div className="w-56 h-full">
-          {navContent}
-        </div>
-      </aside>
-
-      {/* Mobile Drawer Sidebar */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-50 lg:hidden bg-black/80 backdrop-blur-sm animate-in fade-in"
-          onClick={onToggle}
-        >
-          <div
-            className="w-60 h-full bg-[#000000] border-r border-white/10 overflow-y-auto p-1"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {navContent}
-          </div>
-        </div>
-      )}
-    </>
+    /* Desktop Collapsible Sidebar (Mobile uses BottomNav) */
+    <aside
+      className={`hidden lg:block shrink-0 sticky top-16 h-[calc(100vh-4rem)] border-r border-white/5 overflow-y-auto no-scrollbar bg-[#000000] transition-all duration-300 ease-in-out ${
+        isOpen ? 'w-56 opacity-100' : 'w-0 opacity-0 overflow-hidden border-none pointer-events-none'
+      }`}
+    >
+      <div className="w-56 h-full">
+        {navContent}
+      </div>
+    </aside>
   );
 };

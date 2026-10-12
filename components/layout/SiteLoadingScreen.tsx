@@ -1,55 +1,52 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useAnimeData } from '@/context/AnimeDataContext';
 
 export const SiteLoadingScreen: React.FC = () => {
-  const [progress, setProgress] = useState(0);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const { isInitialLoaded, loadProgress } = useAnimeData();
+  const [displayProgress, setDisplayProgress] = useState(15);
   const [shouldRender, setShouldRender] = useState(true);
 
+  // Silliq progress animatsiyasi
   useEffect(() => {
-    // Check if loaded in this session to make navigation smooth
-    const hasLoadedBefore = sessionStorage.getItem('aninovuz_initial_loaded');
-    const duration = hasLoadedBefore ? 800 : 2000;
-    const stepTime = 25;
-    const totalSteps = duration / stepTime;
-    let step = 0;
-
+    const target = isInitialLoaded ? 100 : Math.max(displayProgress, loadProgress);
     const interval = setInterval(() => {
-      step++;
-      const currentProgress = Math.min(100, Math.round((step / totalSteps) * 100));
-      setProgress(currentProgress);
-
-      if (step >= totalSteps) {
-        clearInterval(interval);
-        try {
-          sessionStorage.setItem('aninovuz_initial_loaded', 'true');
-        } catch {}
-        setTimeout(() => {
-          setIsLoaded(true);
-          setTimeout(() => {
-            setShouldRender(false);
-          }, 700);
-        }, 200);
-      }
-    }, stepTime);
+      setDisplayProgress((prev) => {
+        if (prev >= target) {
+          clearInterval(interval);
+          return target;
+        }
+        return prev + 2;
+      });
+    }, 20);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [loadProgress, isInitialLoaded, displayProgress]);
+
+  // Yuklanish tugagandan so'ng DOM dan butunlay olib tashlash
+  useEffect(() => {
+    if (isInitialLoaded && displayProgress >= 100) {
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [isInitialLoaded, displayProgress]);
 
   if (!shouldRender) return null;
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#000000] select-none transition-opacity duration-700 ${
-        isLoaded ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#000000] select-none transition-opacity duration-700 ease-out ${
+        isInitialLoaded && displayProgress >= 100 ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
       {/* Ambient background glow */}
-      <div className="absolute w-80 h-80 rounded-full bg-red-600/10 blur-3xl pointer-events-none animate-pulse" />
+      <div className="absolute w-80 h-80 rounded-full bg-red-600/15 blur-3xl pointer-events-none animate-pulse" />
 
       <div className="relative z-10 flex flex-col items-center max-w-sm px-6">
-        {/* LOGO: "Aninovuz" with spinning Shuriken above the red 'i' */}
+        {/* LOGO: "Aninovuz" with spinning Shuriken on red 'i' */}
         <div className="flex items-center justify-center tracking-tight mb-8">
           {/* "An" in white */}
           <span className="text-4xl sm:text-5xl font-black text-white font-serif italic drop-shadow-[0_2px_12px_rgba(255,255,255,0.2)]">
@@ -58,7 +55,7 @@ export const SiteLoadingScreen: React.FC = () => {
 
           {/* "i" with spinning Shuriken */}
           <div className="relative inline-flex flex-col items-center justify-center mx-1 sm:mx-1.5 -mb-1">
-            {/* 4-Point Spinning Ninja Shuriken as the dot of 'i' */}
+            {/* 4-Point Spinning Ninja Shuriken */}
             <div className="animate-spin" style={{ animationDuration: '2.5s' }}>
               <svg
                 viewBox="0 0 24 24"
@@ -85,25 +82,25 @@ export const SiteLoadingScreen: React.FC = () => {
 
         {/* Loading Progress Bar Container */}
         <div className="w-60 sm:w-72 space-y-3 text-center">
-          {/* Progress bar background */}
+          {/* Progress bar */}
           <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden border border-white/10 p-[1px]">
             <div
               className="h-full bg-gradient-to-r from-red-600 via-red-500 to-amber-500 rounded-full transition-all duration-100 ease-out shadow-[0_0_12px_rgba(239,68,68,0.8)]"
-              style={{ width: `${progress}%` }}
+              style={{ width: `${displayProgress}%` }}
             />
           </div>
 
           {/* Status & Percentage */}
           <div className="flex items-center justify-between text-xs font-semibold text-gray-400">
             <span className="tracking-wide">
-              {progress >= 100 ? (
+              {displayProgress >= 100 ? (
                 <span className="text-red-500 font-bold">Yuklandi</span>
               ) : (
-                <span>Yuklanmoqda...</span>
+                <span>Tayyorlanmoqda...</span>
               )}
             </span>
             <span className="text-white font-bold font-mono text-sm">
-              {progress}%
+              {displayProgress}%
             </span>
           </div>
         </div>
@@ -111,4 +108,3 @@ export const SiteLoadingScreen: React.FC = () => {
     </div>
   );
 };
-

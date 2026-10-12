@@ -11,7 +11,7 @@ interface SearchModalProps {
 }
 
 /**
- * Matn ichidagi qidirilayotgan harf/so'zni qizil rangda ajratib ko'rsatish (Highlight)
+ * Matn ichidagi qidirilayotgan harf/so'z/sonlarni QIZIL rangda ajratib ko'rsatish (Highlight)
  */
 function highlightMatch(text: string, search: string) {
   if (!text) return '';
@@ -45,7 +45,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
 
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 60);
+      setTimeout(() => inputRef.current?.focus(), 80);
     } else {
       setQuery('');
       setResults([]);
@@ -53,7 +53,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
   }, [isOpen]);
 
   useEffect(() => {
-    if (!query.trim() || query.trim().length < 2) {
+    const q = query.trim();
+    if (!q) {
       setResults([]);
       setLoading(false);
       return;
@@ -62,25 +63,55 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const url = `/api/search?q=${encodeURIComponent(query.trim())}&limit=40`;
+        const url = `/api/search?q=${encodeURIComponent(q)}&limit=50`;
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const raw: AnimeBase[] = Array.isArray(json.data) ? json.data : [];
 
-        // Faqat o'zbekcha nomida qidiruv so'zi bo'lgan animeni ko'rsat
-        const q = query.trim().toLowerCase();
-        const filtered = raw.filter((anime) =>
-          (anime.title_uz || '').toLowerCase().includes(q)
-        );
-        setResults(filtered);
+        const lowerQ = q.toLowerCase();
+        const numQ = Number(q);
+        const isNumeric = !isNaN(numQ) && q !== '';
+
+        // 1. O'zbekcha nom (title_uz), anime_id yoki yil bo'yicha filter (inglizcha nom bo'yicha emas)
+        const matched = raw.filter((anime) => {
+          const uzTitle = (anime.title_uz || '').toLowerCase();
+          const matchesUz = uzTitle.includes(lowerQ);
+          const matchesId = isNumeric && (anime.anime_id === numQ || (anime as any).id === numQ);
+          const matchesYear = isNumeric && anime.year === numQ;
+          return matchesUz || matchesId || matchesYear;
+        });
+
+        // 2. Smart Priority Sorting (Sonlar va title_uz bilan boshlanuvchilar 1-o'rinda)
+        matched.sort((a, b) => {
+          const aTitle = (a.title_uz || '').toLowerCase();
+          const bTitle = (b.title_uz || '').toLowerCase();
+
+          // Sarlavha to'g'ridan-to'g'ri qidiruv so'zi/soni bilan boshlansa
+          const aStarts = aTitle.startsWith(lowerQ);
+          const bStarts = bTitle.startsWith(lowerQ);
+          if (aStarts && !bStarts) return -1;
+          if (!aStarts && bStarts) return 1;
+
+          // ID aynan mos kelsa
+          if (isNumeric) {
+            const aIdMatch = (a.anime_id === numQ || (a as any).id === numQ);
+            const bIdMatch = (b.anime_id === numQ || (b as any).id === numQ);
+            if (aIdMatch && !bIdMatch) return -1;
+            if (!aIdMatch && bIdMatch) return 1;
+          }
+
+          return 0;
+        });
+
+        setResults(matched);
       } catch (err) {
         console.error('Search error:', err);
         setResults([]);
       } finally {
         setLoading(false);
       }
-    }, 300);
+    }, 250);
 
     return () => clearTimeout(timer);
   }, [query]);
@@ -97,49 +128,51 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
   if (!isOpen) return null;
 
   return (
-    <>
-      {/* Orqa fon — qora shaffof, blur effekt, klik bilan yopish */}
+    <div className="fixed inset-0 z-50 flex flex-col justify-start">
+      {/* Orqa fon — qora shaffof overlay (blur bilan), bosilganda yopiladi */}
       <div
-        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity duration-300"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Qidiruv paneli — tepaga yopishgan (sticky top), header ostidan boshlanadi */}
-      <div className="fixed top-16 left-0 right-0 z-50">
-        {/* Qidiruv input satri — to'liq kenglik, qora fon, pastida chiziq */}
-        <div className="w-full bg-[#000000] border-b border-red-600/40 shadow-[0_4px_30px_rgba(0,0,0,0.8)]">
-          <div className="max-w-[60%] mx-auto flex items-center gap-3 px-5 py-3.5">
+      {/* Qidiruv Asosiy Paneli — Ekranning eng tepasidan (top-0) boshlanadi, tepadan pastga silliq tushadi */}
+      <div className="relative z-10 w-full bg-[#000000] border-b border-white/10 shadow-[0_10px_50px_rgba(0,0,0,0.95)] animate-in slide-in-from-top duration-300 ease-out">
+        {/* Yuqori Input Satri */}
+        <div className="w-full border-b border-white/10">
+          <div className="max-w-4xl mx-auto flex items-center gap-3.5 px-4 sm:px-6 py-4">
+            {/* Qizil Qidiruv Ikonkasi */}
             <Search className="w-5 h-5 text-red-500 shrink-0" />
 
+            {/* Asosiy Input */}
             <input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Anime nomini yozing..."
-              className="flex-1 bg-transparent text-sm sm:text-base text-gray-100 placeholder-gray-500 focus:outline-none"
+              placeholder="Anime nomini yoki sonini yozing..."
+              className="flex-1 bg-transparent text-base sm:text-lg text-white font-medium placeholder-gray-500 focus:outline-none"
             />
 
             {loading && (
-              <Loader2 className="w-4 h-4 text-red-500 animate-spin shrink-0" />
+              <Loader2 className="w-5 h-5 text-red-500 animate-spin shrink-0" />
             )}
 
             {query && !loading && (
               <button
                 onClick={() => setQuery('')}
-                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                className="p-1 text-gray-400 hover:text-white transition-colors"
                 title="Tozalash"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
 
-            {/* X tugmasi va ESC */}
+            {/* X va ESC tugmalari */}
             <div className="flex items-center gap-2 shrink-0 pl-3 border-l border-white/10">
               <button
                 onClick={onClose}
-                className="w-7 h-7 rounded-full bg-red-600/10 hover:bg-red-600/20 border border-white/10 hover:border-red-600/40 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all"
+                className="w-7 h-7 rounded-full bg-white/5 hover:bg-red-600/20 border border-white/10 hover:border-red-600/40 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all"
                 aria-label="Yopish"
               >
                 <X className="w-3.5 h-3.5" />
@@ -151,55 +184,50 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
           </div>
         </div>
 
-        {/* Natijalar paneli — qora fon, scroll, max-h */}
-        <div className="w-full bg-[#000000] border-b border-white/5 shadow-[0_8px_40px_rgba(0,0,0,0.9)] max-h-[70vh] overflow-y-auto no-scrollbar">
-          <div className="max-w-[60%] mx-auto py-4 px-5 space-y-2">
+        {/* Natijalar Paneli */}
+        <div className="w-full max-h-[75vh] overflow-y-auto no-scrollbar">
+          <div className="max-w-4xl mx-auto py-4 px-4 sm:px-6">
 
-            {/* Bo'sh holat — hech narsa yozilmagan */}
+            {/* 1. Bo'sh holat — hech narsa yozilmagan */}
             {query.trim() === '' && (
-              <div className="py-10 text-center text-gray-500 text-sm select-none">
-                <Search className="w-8 h-8 mx-auto mb-3 opacity-20 text-gray-400" />
-                <p className="text-gray-400">Hech qanday anime qidirmagansiz</p>
-                <p className="text-xs text-gray-600 mt-1">Anime nomini yuqoriga yozing</p>
+              <div className="py-14 text-center select-none">
+                <Search className="w-10 h-10 mx-auto mb-3 opacity-20 text-gray-400" />
+                <p className="text-sm font-medium text-gray-300">Hech qanday anime qidirmagansiz</p>
+                <p className="text-xs text-gray-600 mt-1">Anime nomi yoki raqamini yuqoriga yozing</p>
               </div>
             )}
 
-            {/* Yozildi lekin kam harf */}
-            {query.trim().length === 1 && (
-              <div className="py-10 text-center text-sm select-none">
-                <p className="text-gray-500">Qidiruv uchun kamida 2 ta harf kiriting</p>
-              </div>
-            )}
-
-            {/* Yuklanmoqda */}
-            {query.trim().length >= 2 && loading && results.length === 0 && (
-              <div className="py-10 flex items-center justify-center gap-2 text-sm text-gray-400">
+            {/* 2. Yuklanmoqda */}
+            {query.trim() !== '' && loading && results.length === 0 && (
+              <div className="py-14 flex items-center justify-center gap-2 text-sm text-gray-400">
                 <Loader2 className="w-5 h-5 text-red-500 animate-spin" />
                 <span>Qidirilmoqda...</span>
               </div>
             )}
 
-            {/* Hech narsa topilmadi */}
-            {query.trim().length >= 2 && !loading && results.length === 0 && (
-              <div className="py-10 text-center text-sm">
-                <p className="text-gray-300 font-semibold mb-1">
+            {/* 3. Hech narsa topilmadi */}
+            {query.trim() !== '' && !loading && results.length === 0 && (
+              <div className="py-14 text-center">
+                <p className="text-sm text-gray-200 font-semibold mb-1">
                   &ldquo;{query}&rdquo; bo&apos;yicha anime topilmadi
                 </p>
-                <p className="text-xs text-gray-600">
-                  Boshqa so&apos;z yoki to&apos;liq anime nomini kiriting
+                <p className="text-xs text-gray-500">
+                  Boshqa so&apos;z, o&apos;zbekcha nom yoki anime raqamini kiriting
                 </p>
               </div>
             )}
 
-            {/* Natijalar */}
+            {/* 4. Topilgan Natijalar Ro'yxati */}
             {results.length > 0 && (
-              <>
-                <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest px-1 pb-2 flex items-center justify-between">
+              <div className="space-y-3">
+                {/* Sarlavha: NATIJALAR va Soni */}
+                <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest px-1 flex items-center justify-between">
                   <span>Natijalar</span>
-                  <span className="text-red-500">{results.length}</span>
+                  <span className="text-red-500 font-extrabold">{results.length}</span>
                 </div>
 
-                <div className="space-y-1.5">
+                {/* Ro'yxat */}
+                <div className="space-y-1.5 pb-2">
                   {results.map((anime) => {
                     const poster = anime.poster_r2_url || (anime as any).poster;
                     const rawRating = Number((anime as any).average_rating || anime.rating || 0);
@@ -209,10 +237,10 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
                         key={anime.anime_id || anime.id}
                         href={`/anime/${anime.anime_id || anime.id}`}
                         onClick={onClose}
-                        className="flex items-center gap-4 px-3 py-2.5 rounded-xl hover:bg-white/5 border border-transparent hover:border-red-600/20 transition-all group"
+                        className="flex items-center gap-3.5 sm:gap-4 p-2.5 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group"
                       >
                         {/* Poster */}
-                        <div className="w-11 h-15 sm:w-14 sm:h-16 rounded-lg overflow-hidden bg-gray-900 shrink-0 border border-white/5" style={{ height: '4rem' }}>
+                        <div className="w-12 h-16 sm:w-14 sm:h-18 rounded-lg overflow-hidden bg-gray-950 shrink-0 border border-white/10 shadow-sm">
                           {poster ? (
                             <img
                               src={poster}
@@ -226,30 +254,31 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
                           )}
                         </div>
 
-                        {/* Ma'lumotlar */}
+                        {/* Ma'lumotlar: Title_uz (qizil highlight), Title_en, Badgeler */}
                         <div className="flex-1 min-w-0">
-                          {/* O'zbekcha nom — qidiruv so'zi qizil */}
+                          {/* O'zbekcha nom — qidiruv so'zi/soni QIZIL rangda */}
                           <h4 className="text-sm font-bold text-gray-100 truncate group-hover:text-white transition-colors">
                             {highlightMatch(anime.title_uz || anime.title_en, query)}
                           </h4>
 
                           {/* Inglizcha nom — oddiy kulrang, highlight yo'q */}
                           {anime.title_en && anime.title_en !== anime.title_uz && (
-                            <p className="text-[11px] text-gray-600 truncate mt-0.5">
+                            <p className="text-[11px] text-gray-500 truncate mt-0.5">
                               {anime.title_en}
                             </p>
                           )}
 
+                          {/* Meta Badgeler: Yili, Turi, Janrlari */}
                           <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[11px] font-medium">
                             <span className="px-1.5 py-0.5 rounded bg-red-600/20 text-red-400 font-bold border border-red-600/30 text-[10px]">
                               {anime.year || 2024}
                             </span>
-                            <span className="text-gray-500">•</span>
+                            <span className="text-gray-600">•</span>
                             <span className="text-gray-400">{anime.type || 'TV SERIES'}</span>
                             {anime.genres && anime.genres.length > 0 && (
                               <>
                                 <span className="text-gray-600">•</span>
-                                <span className="text-gray-500 truncate max-w-[220px]">
+                                <span className="text-gray-400 truncate max-w-[240px]">
                                   {anime.genres.join(', ')}
                                 </span>
                               </>
@@ -257,7 +286,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
                           </div>
                         </div>
 
-                        {/* Reyting va o'q */}
+                        {/* Reyting va Ochish O'qi (ArrowUpRight) */}
                         <div className="flex items-center gap-2 shrink-0">
                           {rawRating > 0 && (
                             <div className="flex items-center gap-1 text-[11px] font-black text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-1 rounded-lg">
@@ -265,18 +294,18 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
                               <span>{rawRating.toFixed(1)}</span>
                             </div>
                           )}
-                          <ArrowUpRight className="w-4 h-4 text-gray-600 group-hover:text-red-500 transition-colors" />
+                          <ArrowUpRight className="w-4 h-4 text-gray-500 group-hover:text-red-500 transition-colors" />
                         </div>
                       </Link>
                     );
                   })}
                 </div>
-              </>
+              </div>
             )}
 
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };

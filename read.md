@@ -1,57 +1,37 @@
 # 🎌 AniNovuz Frontend — To'liq Loyiha Hujjati (read.md)
 
-> **Oxirgi yangilanish:** 2026-10-09  
-> **Dizayn standarti:** Pastki Toza Anime Kartalari (Nom pastda, badgeler rasm burchaklarida) + Bo'lim ustiga borganda `< >` tugmalari + Mustaqil karta Hover  
+> **Oxirgi yangilanish:** 2026-10-11  
+> **Dizayn standarti:** Professional Preloaded State (Netflix/YouTube uslubidagi 0ms glitchsiz o'tish) + F5 Initial Shuriken Loading Screen  
 > **Framework:** Next.js (App Router, Turbopack) + TypeScript + Tailwind CSS  
 > **Backend Worker:** `https://aninovuz-backend.xudoyqulovabdulaziz08.workers.dev`  
 > **Build Holati:** 0 xatolik bilan muvaffaqiyatli (`Compiled successfully`) ✅  
 
 ---
 
-## 🎨 1. Yangilangan Anime Kartasi va Bo'lim Dizayni
+## ⚡ 1. Professional Instant Navigatsiya va Loading Tizimi
 
-Foydalanuvchi chizmasi (`media_1791539646303_4dd1948b.png`) asosida quyidagi yangilanishlar amalga oshirildi:
+1. **Netflix & YouTube Uslubidagi 0ms Glitchsiz Navigatsiya (`AnimeDataContext.tsx`):**
+   - Sayt birinchi marta ochilganda yoki `F5` bosilganda barcha zaruriy ma'lumotlar (`homepageData` va `allAnimes`) xotiraga yuklab olinadi va keshlanadi.
+   - Natijada, **Bosh sahifa (`/`)** va **Animelar (`/animes`)** bo'limlari o'rtasida o'tganda hech qanday skelet lipillashi (flicker/glitch) yoki to'xtalish bo'lmaydi — sahifalar **0ms da darhol va silliq ochiladi**!
 
-```
-┌──────────────────────────────────────────────┐
-│ [ HOT / NEW ]                         [2026] │
-│                                              │
-│                   POSTER                     │
-│               (Yorqin rasm)                  │
-│                                              │
-│ [ ★ 9.0 ]                          [12 qism] │
-└──────────────────────────────────────────────┘
-  Anime Nomi (Sig'masa 3 nuqta ...)
-```
-
-### ✨ Asosiy Yangiliklar:
-1. **Toza Rasm va To'rt Burchakli Badgeler (`AnimeCard.tsx`):**
-   - Rasm ustidagi umumiy xira qora blur qatlami butunlay olib tashlandi — rasm toza va yorqin ko'rinadi.
-   - **Yuqori chapda:** `HOT` / `NEW` qizil nishoni.
-   - **Yuqori o'ngda:** `2026` yili nishoni (shaffof qoramtir).
-   - **Pastki chapda (rasm ustida):** `★ 9.0` yoki `★ 0` reyting nishoni.
-   - **Pastki o'ngda (rasm ustida):** `12 qism` nishoni.
-
-2. **Anime Nomi Rasm Tagiga O'tkazildi:**
-   - Anime nomi rasmning ostidagi alohida sohaga joylashtirildi.
-   - Nomi uzun bo'lsa `truncate` orqali 3 nuqta (`...`) bilan cheklanadi.
-
-3. **Mustaqil Karta Hover Effekti (Faqat bitta karta):**
-   - Guruhlash `group/card` va `group/section` ga ajratildi.
-   - Foydalanuvchi qaysidir aniq bitta anime kartasi ustiga sichqonchani borganda, **faqat o'sha bitta kartaning rasmi kattalashadi va nomi qizil rangga kiradi**. Boshqa qo'shni kartalar qimirlamaydi va rangi o'zgarmaydi.
-
-4. **Bo'lim Ustiga Borganda Siljish Tugmalari (`< >`):**
-   - Bo'lim (section) ustiga hover bo'lgandagina chap va o'ngdagi `<` hamda `>` tugmalari paydo bo'ladi (`group-hover/section:opacity-100`).
-
-5. **Qalinroq Qizil Chiziq:**
-   - Bo'lim sarlavhasi chap tomonidagi vertikal qizil chiziq qalinroq va yaqqol ko'rinadigan qilindi (`border-l-[3.5px] border-red-600 pl-3`).
+2. **F5 Initial Loading Ekrani (`SiteLoadingScreen.tsx`):**
+   - Saytga birinchi marta kirganda yoki `F5` (refresh) bosilganda, ma'lumotlar to'liq tayyor bo'lguncha aylanuvchi Shurikenli ninja logotip va haqiqiy progress barli chiroyli loading ekrani chiqadi (`0% -> 100%`).
+   - Ma'lumotlar yuklanishi bilan silliq `fade-out` bo'lib yo'qoladi.
+   - Ichki sahifalar o'rtasida navigatsiya qilganda esa qayta chiqmaydi va foydalanuvchiga xalaqit bermaydi.
 
 ---
 
-## 🚀 2. Ishga Tushirish
+## 🎬 2. Barcha Animelar Sahifasi (`/animes`) & Tafsilotlar (`/anime/[id]`)
+
+- **Barcha Animelar:** `/animes` bo'limida 15-daqiqali kesh, 5 xil saralash filtrlari (Janr, Yil, Reyting, Holati, Saralash) va 7 ustunli kartalar gridi.
+- **Anime Tafsiloti:** `/anime/[id]` sahifasida barcha qismlar pleylisti va o'xshash tavsiyalar.
+
+---
+
+## 🚀 3. Ishga Tushirish
 
 ```bash
-npm run dev     # Dev rejim
+npm run dev     # Dasturlash (Dev): http://localhost:3000
 npm run build   # Production build
 npm start       # Production start
 ```
