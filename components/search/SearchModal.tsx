@@ -63,7 +63,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const url = `/api/search?q=${encodeURIComponent(q)}&limit=50`;
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://aninovuz-backend.xudoyqulovabdulaziz08.workers.dev';
+        const url = `${API_BASE}/api/anime/search?q=${encodeURIComponent(q)}&limit=50`;
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
