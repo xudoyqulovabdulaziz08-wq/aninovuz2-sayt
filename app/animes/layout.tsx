@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-
+export const runtime = 'edge';
 export const metadata: Metadata = {
   title: "Barcha animelar katalogi — O'zbek tilida tomosha qilish",
   description:
