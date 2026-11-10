@@ -123,7 +123,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
         </div>
 
         {/* 3. User Section */}
-        <div className="pb-2">
+        {/* <div className="pb-2">
           <h4 className="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
             FOYDALANUVCHI
           </h4>
@@ -148,7 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               );
             })}
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Telegram Bot Promo Card */}

@@ -16,6 +16,7 @@ export interface AnimeBase {
   genres: string[];
   dubbers?: string[];
   episodes_count?: number;
+  is_finished?: boolean;
   description?: string;
 }
 

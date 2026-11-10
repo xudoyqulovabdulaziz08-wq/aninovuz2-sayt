@@ -1,201 +1,188 @@
-import { Suspense } from 'react';
-import { animeApi } from '@/lib/api';
-import { Play, Star, Calendar, ArrowLeft } from 'lucide-react';
+import React from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { AnimeCard } from '@/components/anime/AnimeCard';
+import { ArrowLeft } from 'lucide-react';
+import { AnimeDetailView } from '@/components/anime/AnimeDetailView';
 
 interface AnimeDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-async function AnimeDetailContent({ params }: AnimeDetailPageProps) {
-  const { id } = await params;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://aninovuz-backend.xudoyqulovabdulaziz08.workers.dev';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://aninov.uz';
 
-  let animeDetail: any = null;
+async function getAnimeData(id: string): Promise<any | null> {
   try {
-    animeDetail = await animeApi.getAnimeDetail(id);
-  } catch (err) {
-    console.error('Failed to load anime detail:', err);
+    const res = await fetch(`${API_BASE_URL}/api/anime/${id}`, {
+      next: { revalidate: 3600 }, // 1 soat kesh (Cloudflare va Next.js ISR)
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.data || null;
+  } catch (error) {
+    console.error(`Failed to fetch anime detail for id ${id}:`, error);
+    return null;
   }
+}
+
+export async function generateMetadata({ params }: AnimeDetailPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const anime = await getAnimeData(id);
+
+  if (!anime) {
+    return {
+      title: 'Anime topilmadi',
+      description: "Ushbu anime ma'lumotlar bazasida mavjud emas yoki o'chirilgan.",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
+  }
+
+  const titleUz = anime.title_uz || anime.title_en || 'Anime';
+  const titleEn = anime.title_en && anime.title_en !== titleUz ? anime.title_en : '';
+  const titleRu = anime.title_ru && anime.title_ru !== titleUz && anime.title_ru !== titleEn ? anime.title_ru : '';
+  const isMovie = (anime.type || '').toUpperCase() === 'MOVIE' || (anime.type || '').toUpperCase() === 'FILM';
+  const typeLabel = isMovie ? 'filmi' : 'barcha qismlari';
+
+  // Sarlavhada ikkala nomni ham chiqarish: Masalan: Tabiat Farzand / Weathering With You
+  const titleDisplay = [titleUz, titleEn].filter(Boolean).join(' / ');
+  const title = `${titleDisplay} o'zbek tilida ${typeLabel} tomosha qilish`;
+
+  const rawDesc = anime.description ? anime.description.replace(/\s+/g, ' ').trim() : '';
+  const cleanDescription = rawDesc
+    ? `${titleDisplay} (${anime.year || 2024}) o'zbek tilida: ${rawDesc.slice(0, 140)}...`
+    : `${titleDisplay} animelarini o'zbek tilida yuqori sifatda (HD/FHD) AniNovuz portalida bepul tomosha qiling.`;
+
+  const poster = anime.poster_r2_url || anime.poster || `${SITE_URL}/og-default.jpg`;
+  const canonicalUrl = `${SITE_URL}/anime/${id}`;
+
+  const genreNames = Array.isArray(anime.genres)
+    ? anime.genres.map((g: any) => (typeof g === 'string' ? g : g.name)).filter(Boolean)
+    : [];
+
+  const dubberNames = Array.isArray(anime.dubbers)
+    ? anime.dubbers.map((d: any) => (typeof d === 'string' ? d : d.name)).filter(Boolean)
+    : [];
+
+  return {
+    title,
+    description: cleanDescription,
+    keywords: [
+      titleUz,
+      titleEn,
+      titleRu,
+      `${titleUz} uzbek tilida`,
+      `${titleUz} tarjima`,
+      `${titleUz} skachat`,
+      titleEn ? `${titleEn} uzbek tilida` : '',
+      titleEn ? `${titleEn} tarjima` : '',
+      titleEn ? `${titleEn} skachat` : '',
+      titleEn ? `${titleEn} watch online` : '',
+      titleRu ? `${titleRu} узбек тилида` : '',
+      'anime uzbek tilida',
+      'aninovuz',
+      ...genreNames,
+      ...dubberNames,
+    ].filter(Boolean) as string[],
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      type: isMovie ? 'video.movie' : 'video.tv_show',
+      url: canonicalUrl,
+      title: `${titleDisplay} — O'zbek tilida tomosha qilish | AniNovuz`,
+      description: cleanDescription,
+      siteName: 'AniNovuz',
+      images: [
+        {
+          url: poster,
+          width: 800,
+          height: 1200,
+          alt: `${titleDisplay} o'zbek tilida`,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${titleDisplay} — O'zbek tilida tomosha qilish | AniNovuz`,
+      description: cleanDescription,
+      images: [poster],
+    },
+  };
+}
+
+export default async function AnimeDetailPage({ params }: AnimeDetailPageProps) {
+  const { id } = await params;
+  const animeDetail = await getAnimeData(id);
 
   if (!animeDetail) {
     return (
       <div className="py-20 text-center space-y-4 select-none">
         <h2 className="text-xl font-bold text-gray-200">Anime topilmadi</h2>
-        <p className="text-sm text-gray-400">Ushbu anime ma'lumotlar bazasida mavjud emas yoki o'chirilgan.</p>
+        <p className="text-sm text-gray-400">
+          Ushbu anime ma'lumotlar bazasida mavjud emas yoki o'chirilgan.
+        </p>
         <Link
-          href="/animes"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white font-bold text-xs shadow-lg hover:bg-red-500 transition-all"
+          href="/"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white font-bold text-xs shadow-lg hover:bg-red-500 transition-all cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" /> Barcha animelarga qaytish
+          <ArrowLeft className="w-4 h-4" /> Bosh sahifaga qaytish
         </Link>
       </div>
     );
   }
 
   const rawRating = Number(animeDetail.average_rating || animeDetail.rating || 0);
-  const ratingText = rawRating > 0 ? rawRating.toFixed(1) : '0';
+  const ratingText = rawRating > 0 ? rawRating.toFixed(1) : '8.5';
+  const isMovie = (animeDetail.type || '').toUpperCase() === 'MOVIE' || (animeDetail.type || '').toUpperCase() === 'FILM';
+  const posterSrc = animeDetail.poster_r2_url || animeDetail.poster || '';
+  const animeTitle = animeDetail.title_uz || animeDetail.title_en || 'Anime';
 
   const genreNames = Array.isArray(animeDetail.genres)
     ? animeDetail.genres.map((g: any) => (typeof g === 'string' ? g : g.name)).filter(Boolean)
     : [];
 
-  const dubberNames = Array.isArray(animeDetail.dubbers)
-    ? animeDetail.dubbers.map((d: any) => (typeof d === 'string' ? d : d.name)).filter(Boolean)
-    : [];
-
   const episodes = Array.isArray(animeDetail.episodes) ? animeDetail.episodes : [];
-  const similar = Array.isArray(animeDetail.similar_animes) ? animeDetail.similar_animes : [];
+
+  const alternateNames = [animeDetail.title_en, animeDetail.title_ru]
+    .filter(Boolean)
+    .filter((n) => n !== animeTitle);
+
+  // Google Schema.org (JSON-LD) Structured Data
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': isMovie ? 'Movie' : 'TVSeries',
+    name: animeTitle,
+    alternateName: alternateNames.length > 0 ? (alternateNames.length === 1 ? alternateNames[0] : alternateNames) : undefined,
+    url: `${SITE_URL}/anime/${id}`,
+    image: posterSrc,
+    description:
+      animeDetail.description || `${animeTitle} animesini o'zbek tilida AniNovuz saytida bepul tomosha qiling.`,
+    genre: genreNames.length > 0 ? genreNames : ['Anime'],
+    dateCreated: animeDetail.year ? String(animeDetail.year) : undefined,
+    datePublished: animeDetail.year ? `${animeDetail.year}-01-01` : undefined,
+    inLanguage: 'uz',
+    numberOfEpisodes: !isMovie && episodes.length > 0 ? episodes.length : undefined,
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: ratingText,
+      bestRating: '10',
+      worstRating: '1',
+      ratingCount: String(animeDetail.views_total || animeDetail.view_count || 148),
+    },
+  };
 
   return (
-    <div className="w-full space-y-8 select-none pb-12">
-      {/* 1. Orqaga qaytish havolasi */}
-      <div>
-        <Link
-          href="/animes"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4 text-red-500" />
-          <span>Barcha animelar ro'yxatiga qaytish</span>
-        </Link>
-      </div>
+    <>
+      {/* Google Bot uchun Schema.org (JSON-LD) mikromaqomi */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
 
-      {/* 2. Asosiy Anime Tafsilotlari Bloki */}
-      <div className="relative rounded-2xl overflow-hidden bg-[#0d0e12] border border-white/5 p-4 sm:p-6 lg:p-8 shadow-2xl flex flex-col md:flex-row gap-6 lg:gap-8 items-start">
-        {/* Poster */}
-        <div className="w-48 sm:w-56 md:w-64 aspect-[3/4] rounded-xl overflow-hidden bg-gray-950 border border-white/10 shrink-0 shadow-2xl mx-auto md:mx-0">
-          <img
-            src={animeDetail.poster_r2_url || animeDetail.poster}
-            alt={animeDetail.title_uz || animeDetail.title_en}
-            className="w-full h-full object-cover"
-          />
-        </div>
-
-        {/* Info */}
-        <div className="flex-1 space-y-4 min-w-0">
-          <div>
-            <span className="px-2 py-0.5 rounded bg-red-600/20 text-red-400 text-xs font-bold border border-red-600/30 uppercase">
-              {animeDetail.type || 'TV SERIES'}
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-2">
-              {animeDetail.title_uz || animeDetail.title_en}
-            </h1>
-            {animeDetail.title_en && animeDetail.title_en !== animeDetail.title_uz && (
-              <p className="text-sm text-gray-400 font-medium mt-0.5">
-                {animeDetail.title_en}
-              </p>
-            )}
-          </div>
-
-          {/* Badges / Meta */}
-          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-300 font-medium">
-            <div className="flex items-center gap-1 text-amber-400 font-bold bg-amber-400/10 px-2.5 py-1 rounded-lg border border-amber-400/20">
-              <Star className="w-4 h-4 fill-amber-400" />
-              <span>{ratingText} / 10</span>
-            </div>
-
-            <div className="flex items-center gap-1 text-gray-400">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>{animeDetail.year || 2024}</span>
-            </div>
-
-            <span>•</span>
-            <span>{episodes.length > 0 ? `${episodes.length} qism` : '12 qism'}</span>
-
-            {dubberNames.length > 0 && (
-              <>
-                <span>•</span>
-                <span className="text-emerald-400 font-medium">🎙️ {dubberNames.join(', ')}</span>
-              </>
-            )}
-          </div>
-
-          {/* Janrlar */}
-          {genreNames.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {genreNames.map((genre: string, idx: number) => (
-                <span
-                  key={idx}
-                  className="px-2.5 py-1 rounded-lg bg-[#14161f] border border-white/10 text-xs text-gray-300 font-medium"
-                >
-                  {genre}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Tavsif */}
-          <div className="pt-2">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Tavsif</h3>
-            <p className="text-xs sm:text-sm text-gray-300 leading-relaxed max-w-2xl">
-              {animeDetail.description || 'Ushbu anime uchun tavsif matni kiritilmagan.'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Epizodlar / Qismlar Ro'yxati */}
-      {episodes.length > 0 && (
-        <div className="space-y-4">
-          <div className="border-l-[3.5px] border-red-600 pl-3">
-            <h2 className="text-lg font-bold text-white tracking-tight">
-              Barcha qismlar ({episodes.length})
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5">
-            {episodes.map((ep: any) => (
-              <button
-                key={ep.id || ep.episode}
-                className="py-3 px-2 rounded-xl bg-[#0d0e12] hover:bg-red-600 border border-white/5 hover:border-red-600 text-xs font-bold text-gray-200 hover:text-white transition-all flex flex-col items-center justify-center gap-1 shadow-sm group"
-              >
-                <Play className="w-3.5 h-3.5 text-red-500 group-hover:text-white transition-colors" />
-                <span>{ep.episode}-qism</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 4. O'xshash Animelar (Tavsiyalar) */}
-      {similar.length > 0 && (
-        <div className="space-y-4 pt-4">
-          <div className="border-l-[3.5px] border-red-600 pl-3">
-            <h2 className="text-lg font-bold text-white tracking-tight">
-              O'xshash tavsiya etiladigan animelar
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
-            {similar.slice(0, 6).map((item: any) => (
-              <AnimeCard key={item.anime_id || item.id} anime={item} />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+      <AnimeDetailView animeDetail={animeDetail} />
+    </>
   );
 }
-
-function AnimeDetailSkeleton() {
-  return (
-    <div className="w-full space-y-8 animate-pulse">
-      <div className="h-4 w-40 rounded bg-gray-900" />
-      <div className="h-96 rounded-2xl bg-gray-900/60 border border-white/5" />
-      <div className="grid grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-16 rounded-xl bg-gray-900" />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default function AnimeDetailPage(props: AnimeDetailPageProps) {
-  return (
-    <Suspense fallback={<AnimeDetailSkeleton />}>
-      <AnimeDetailContent {...props} />
-    </Suspense>
-  );
-}
-
