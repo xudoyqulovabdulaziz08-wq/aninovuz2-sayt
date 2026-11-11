@@ -3,13 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Send, KeyRound, Loader2, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
+import { Send, KeyRound, Loader2, AlertCircle, CheckCircle2, Sparkles, ExternalLink, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { api } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, login } = useAuth();
+  const { user, login, loginWithTelegramWebApp, isTelegramWebApp } = useAuth();
 
   const [userId, setUserId] = useState('');
   const [code, setCode] = useState('');
@@ -26,58 +25,57 @@ export default function LoginPage() {
     }
   }, [user, router, successMsg]);
 
-  // 2. Telegram orqali avtomatik ulanish (URL parametrlari yoki WebApp initData orqali)
+  // 2. Telegram Mini App ichida ochilganda darhol avto-login qilishga urinish
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const autoLoginFromParams = async () => {
-      try {
-        // A) Telegram WebApp tekshiruvi (Mini App ichida ochilganda)
-        const tgWebApp = (window as any)?.Telegram?.WebApp;
-        if (tgWebApp?.initData) {
-          setIsAutoConnecting(true);
-          const res = await api.post('/api/auth/webapp', { initData: tgWebApp.initData });
-          if (res.data?.success) {
-            // Backend HttpOnly cookie o'rnatdi — localStorage ishlatilmaydi
-            setSuccessMsg('Telegram WebApp orqali muvaffaqiyatli kirdingiz!');
-            setTimeout(() => {
-              window.location.href = '/';
-            }, 600);
-            return;
-          }
+    const tryWebAppAutoLogin = async () => {
+      const tg = (window as any)?.Telegram?.WebApp;
+      if (tg?.initData && !user) {
+        setIsAutoConnecting(true);
+        const res = await loginWithTelegramWebApp();
+        if (res.success) {
+          setSuccessMsg('Telegram orqali muvaffaqiyatli ulandingiz! Bosh sahifaga yo\'naltirilmoqda...');
+          setTimeout(() => {
+            router.push('/');
+          }, 800);
+        } else {
+          setIsAutoConnecting(false);
         }
-
-        // B) Bot yuborgan havola orqali kelganda: ?userId=12345&code=AN-12345
-        const params = new URLSearchParams(window.location.search);
-        const urlUserId = params.get('userId') || params.get('id');
-        const urlCode = params.get('code') || params.get('token');
-
-        if (urlUserId && urlCode) {
-          setUserId(urlUserId);
-          setCode(urlCode);
-          setIsAutoConnecting(true);
-
-          const res = await login(urlUserId, urlCode);
-          if (res.success) {
-            setSuccessMsg('Telegram orqali avtomatik ulandi! Yo\'naltirilmoqda...');
-            setTimeout(() => {
-              router.push('/');
-            }, 700);
-          } else {
-            setError(res.message || 'Avtomatik ulanishda xatolik yuz berdi.');
-            setIsAutoConnecting(false);
-          }
-        }
-      } catch (err: any) {
-        console.warn('Auto login error:', err);
-        setIsAutoConnecting(false);
       }
     };
 
-    autoLoginFromParams();
-  }, [login, router]);
+    tryWebAppAutoLogin();
+  }, [loginWithTelegramWebApp, user, router]);
 
-  // 3. "Telegram orqali tezkor kirish" tugmasi bosilganda
+  // 3. Brauzer vkladkasiga qaytilganda (window focus) sessiyani avtomatik tekshirish
+  useEffect(() => {
+    const handleFocus = async () => {
+      if (quickLoginNotice && !user) {
+        // Foydalanuvchi botga o'tib qaytib kelgan bo'lishi mumkin
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const uId = params.get('userId') || params.get('id');
+          const uCode = params.get('code') || params.get('token');
+          if (uId && uCode) {
+            setUserId(uId);
+            setCode(uCode);
+            setIsLoading(true);
+            const res = await login(uId, uCode);
+            if (res.success) {
+              setSuccessMsg('Telegram orqali avtomatik ulandi!');
+              setTimeout(() => router.push('/'), 800);
+            }
+          }
+        } catch {}
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [quickLoginNotice, user, login, router]);
+
+  // 4. "Telegram orqali tezkor kirish" tugmasi bosilganda
   const handleTelegramQuickLogin = () => {
     setError(null);
     setQuickLoginNotice(true);
@@ -85,21 +83,38 @@ export default function LoginPage() {
     const botUrl = 'https://t.me/Aninovuz_bot?start=login';
     const tgAppUrl = 'tg://resolve?domain=Aninovuz_bot&start=login';
 
-    // Mobil yoki kompyuter ilovasida Telegramni ochishga urinish
-    window.location.href = tgAppUrl;
+    // Agar allaqachon Telegram Mini App ichida bo'lsa — to'g'ridan-to'g'ri WebApp auth ni chaqiramiz
+    const tg = (window as any)?.Telegram?.WebApp;
+    if (tg?.initData) {
+      setIsAutoConnecting(true);
+      loginWithTelegramWebApp().then((res) => {
+        if (res.success) {
+          setSuccessMsg('Telegram orqali kirdingiz!');
+          setTimeout(() => router.push('/'), 700);
+        } else {
+          setIsAutoConnecting(false);
+          setError(res.message || 'Telegram WebApp orqali kirish amalga oshmadi.');
+        }
+      });
+      return;
+    }
 
-    // Zaxira: 300ms dan keyin brauzer orqali botni ochish
+    // Mobil yoki kompyuter ilovasida Telegram botni ochish
+    try {
+      window.location.href = tgAppUrl;
+    } catch {}
+
+    // Zaxira: 300ms dan keyin web orqali ochish
     setTimeout(() => {
       window.open(botUrl, '_blank', 'noopener,noreferrer');
-    }, 300);
+    }, 350);
   };
 
-  // 4. Qo'lda Telegram ID va parol kiritib kirish
+  // 5. Qo'lda Telegram ID va parol kiritib kirish
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
-    setQuickLoginNotice(false);
 
     const cleanUserId = userId.trim();
     const cleanCode = code.trim();
@@ -143,7 +158,6 @@ export default function LoginPage() {
           className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors font-medium cursor-pointer"
           draggable={false}
         >
-          
           <span>←</span>
           <span>Bosh sahifaga qaytish</span>
         </Link>
@@ -187,7 +201,48 @@ export default function LoginPage() {
           </div>
         )}
 
-        
+        {/* 🚀 TELEGRAM ORQALI TEZKOR KIRISH TUGMASI */}
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={handleTelegramQuickLogin}
+            disabled={isLoading || isAutoConnecting}
+            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#229ED9] to-[#1E8BC7] hover:brightness-110 active:scale-[0.98] text-white font-bold text-sm tracking-wide transition-all shadow-lg shadow-sky-500/25 flex items-center justify-center gap-2.5 cursor-pointer group disabled:opacity-50"
+          >
+            <Send className="w-4 h-4 fill-white text-white group-hover:translate-x-0.5 transition-transform" />
+            <span>Telegram orqali tezkor kirish</span>
+            <Sparkles className="w-4 h-4 text-amber-300" />
+          </button>
+
+          {/* Tezkor kirish yo'riqnomasi */}
+          {quickLoginNotice && (
+            <div className="p-3.5 rounded-xl bg-sky-950/40 border border-sky-500/30 text-gray-200 text-xs space-y-2 animate-in fade-in">
+              <div className="flex items-center gap-2 text-sky-400 font-bold">
+                <ShieldCheck className="w-4 h-4" />
+                <span>Tezkor kirish qadamlari:</span>
+              </div>
+              <ol className="list-decimal list-inside space-y-1 text-[11px] text-gray-300 leading-relaxed">
+                <li>
+                  Ochilgan botda <b className="text-white">&quot;Boshlash&quot; (Start)</b> tugmasini bosing.
+                </li>
+                <li>
+                  Bot sizga yuborgan <b className="text-amber-400">Telegram ID</b> va <b className="text-amber-400">Parol</b>ni quyidagi kataklarga kiriting.
+                </li>
+              </ol>
+              <div className="pt-1 flex justify-end">
+                <a
+                  href="https://t.me/Aninovuz_bot?start=login"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-400 hover:text-sky-300 underline"
+                >
+                  <span>Bot ochilmadimi? Bu yerni bosing</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Ajratuvchi chiziq (OR divider) */}
         <div className="relative flex items-center justify-center my-3">
@@ -195,7 +250,7 @@ export default function LoginPage() {
             <div className="w-full border-t border-white/10" />
           </div>
           <div className="relative px-3 bg-[#0c0d12] text-[10px] font-semibold tracking-wider text-gray-500 uppercase">
-             maxsus parol bilan
+            yoki ID va parol bilan
           </div>
         </div>
 
@@ -223,7 +278,7 @@ export default function LoginPage() {
           {/* Maxsus parol */}
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-gray-300">
-              Maxsus parol
+              Maxsus bir martalik parol
             </label>
             <div className="relative flex items-center">
               <KeyRound className="w-4 h-4 text-gray-500 absolute left-3.5 pointer-events-none" />
@@ -255,28 +310,11 @@ export default function LoginPage() {
             )}
           </button>
         </form>
-        {/* 🚀 TELEGRAM ORQALI TEZKOR KIRISH TUGMASI */}
-        <div className="space-y-2">
-          <button
-            type="button"
-            onClick={handleTelegramQuickLogin}
-            className="w-full py-3 px-4 rounded-xl bg-[#229ED9] hover:bg-[#1E8BC7] active:scale-[0.98] text-white font-bold text-sm tracking-wide transition-all shadow-lg shadow-sky-500/25 flex items-center justify-center gap-2.5 cursor-pointer group"
-          >
-            <Send className="w-4 h-4 fill-white text-white group-hover:translate-x-0.5 transition-transform" />
-            <span>Telegram orqali tezkor kirish</span>
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-          </button>
 
-          {quickLoginNotice && (
-            <p className="text-[11px] text-sky-400 text-center leading-relaxed animate-in fade-in">
-              Bot ochilmoqda... Telegramda <b>&quot;Boshlash&quot; (Start)</b> tugmasini bosing va hisobingiz ulanadi.
-            </p>
-          )}
-        </div>
         {/* Yordamchi matn */}
-        <div className="pt-4 border-t border-white/5 flex flex-col items-center text-center space-y-2.5">
+        <div className="pt-4 border-t border-white/5 flex flex-col items-center text-center space-y-2">
           <p className="text-[11px] text-gray-400 leading-relaxed max-w-sm">
-            Parolga egamisiz? Uni olish uchun{' '}
+            Parol olish uchun Telegramdagi rasmiy{' '}
             <a
               href="https://t.me/Aninovuz_bot"
               target="_blank"
@@ -286,7 +324,7 @@ export default function LoginPage() {
             >
               @Aninovuz_bot
             </a>{' '}
-            ga kiring, &quot;Shaxsiy kabinet&quot; tugmasini bosing va 15 daqiqalik parolni bu yerga kiriting.
+            ga kiring va <b>/start login</b> deb yuboring.
           </p>
         </div>
       </div>

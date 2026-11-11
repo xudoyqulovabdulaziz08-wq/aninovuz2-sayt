@@ -83,6 +83,8 @@ export default function RootLayout({
   return (
     <html lang="uz" className="dark">
       <head>
+        {/* Telegram WebApp Rasmiy SDK Skripti (Mini App avtomatik login va to'liq ishlashi uchun) */}
+        <script src="https://telegram.org/js/telegram-web-app.js" async></script>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}

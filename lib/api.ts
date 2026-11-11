@@ -12,6 +12,19 @@ export const api = axios.create({
   },
 });
 
+// Zaxira auth: HttpOnly cookie ishlamagan taqdirda (Telegram In-App / Safari cross-site cheklovida) Bearer tokenni yuborish
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    try {
+      const token = localStorage.getItem('aninovuz_auth_token');
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch {}
+  }
+  return config;
+});
+
 /**
  * Backenddan kelayotgan anime obyektidagi poster maydonini normalize qilish.
  * /api/xotira/anime.json va /api/homepage endpointlari turli maydon nomlari qaytarishi mumkin.
@@ -134,6 +147,21 @@ export const animeApi = {
 export const authApi = {
   login: async (userId: number | string, code: string): Promise<LoginResponse> => {
     const res = await api.post<LoginResponse>('/api/auth/login', { userId, code });
+    if (res.data?.token && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('aninovuz_auth_token', res.data.token);
+      } catch {}
+    }
+    return res.data;
+  },
+
+  loginWithWebApp: async (initData: string): Promise<LoginResponse> => {
+    const res = await api.post<LoginResponse>('/api/auth/webapp', { initData });
+    if (res.data?.token && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('aninovuz_auth_token', res.data.token);
+      } catch {}
+    }
     return res.data;
   },
 
@@ -143,6 +171,11 @@ export const authApi = {
   },
 
   logout: async (): Promise<{ success: boolean; message: string }> => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('aninovuz_auth_token');
+      } catch {}
+    }
     const res = await api.post('/api/auth/logout');
     return res.data;
   },
