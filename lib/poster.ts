@@ -1,4 +1,4 @@
-const CDN_BASE = 'https://cdn.aninov.uz/posters';
+const CDN_BASE = 'https://backend.aninov.uz/posters';
 
 /**
  * Fallback rasm — poster yuklanmasa yoki bo'sh bo'lsa ko'rsatiladi.
@@ -25,6 +25,9 @@ export function getPosterUrl(anime: {
 }): string {
   // 1. poster_r2_url — asosiy maydon
   if (anime.poster_r2_url && anime.poster_r2_url.startsWith('http')) {
+    if (anime.poster_r2_url.includes('cdn.aninov.uz/posters')) {
+      return anime.poster_r2_url.replace('https://cdn.aninov.uz/posters', CDN_BASE);
+    }
     return anime.poster_r2_url;
   }
 

@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
+        hostname: 'backend.aninov.uz',
+      },
+      {
+        protocol: 'https',
         hostname: 'cdn.aninov.uz',
       },
       {

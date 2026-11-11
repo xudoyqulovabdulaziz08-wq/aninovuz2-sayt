@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { ApiResponse, HomepageData, GenreItem, DubberItem, AnimeDetail, AnimeBase, UserProfile, LoginResponse } from '@/types/anime/anime.types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://aninovuz-backend.xudoyqulovabdulaziz08.workers.dev';
-const CDN_BASE = 'https://cdn.aninov.uz/posters';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend.aninov.uz';
+const CDN_BASE = 'https://backend.aninov.uz/posters';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -17,7 +17,10 @@ export const api = axios.create({
  * /api/xotira/anime.json va /api/homepage endpointlari turli maydon nomlari qaytarishi mumkin.
  */
 function normalizePoster(anime: any): any {
-  if (anime.poster_r2_url && anime.poster_r2_url.startsWith('http')) {
+  if (anime.poster_r2_url && typeof anime.poster_r2_url === 'string' && anime.poster_r2_url.startsWith('http')) {
+    if (anime.poster_r2_url.includes('cdn.aninov.uz/posters')) {
+      return { ...anime, poster_r2_url: anime.poster_r2_url.replace('https://cdn.aninov.uz/posters', CDN_BASE) };
+    }
     return anime;
   }
   // Alternativ maydon nomlarini tekshirish
@@ -28,7 +31,10 @@ function normalizePoster(anime: any): any {
     anime.thumbnail;
 
   if (url && typeof url === 'string' && url.startsWith('http')) {
-    return { ...anime, poster_r2_url: url };
+    const fixedUrl = url.includes('cdn.aninov.uz/posters')
+      ? url.replace('https://cdn.aninov.uz/posters', CDN_BASE)
+      : url;
+    return { ...anime, poster_r2_url: fixedUrl };
   }
 
   // Oxirgi variant: anime_id yoki id orqali CDN dan qurish
@@ -41,7 +47,7 @@ function normalizePoster(anime: any): any {
 }
 
 const CACHE_KEY = 'aninovuz_all_animes_cache';
-const CACHE_DURATION = 15 * 60 * 1000; // 15 daqiqa (ms)
+const CACHE_DURATION = 60 * 1000; // 1 daqiqa (yangi animelar tez ko'rinishi uchun)
 
 export const animeApi = {
   getHomepage: async (): Promise<HomepageData> => {
@@ -70,17 +76,22 @@ export const animeApi = {
   },
 
   /**
-   * Barcha animelarni /api/xotira/anime.json dan olish va brauzerda 15 daqiqaga keshlab saqlash
+   * Barcha animelarni /api/xotira/anime.json dan olish va brauzerda keshlab saqlash
+   * (Stale-While-Revalidate: tezkor 0ms yuklash + yangi animelarni 1 daqiqada yangilash)
    */
   getAllAnimesCached: async (): Promise<any[]> => {
+    let cachedData: any[] | null = null;
     if (typeof window !== 'undefined') {
       try {
         const cachedStr = localStorage.getItem(CACHE_KEY);
         if (cachedStr) {
           const parsed = JSON.parse(cachedStr);
-          if (parsed && parsed.timestamp && (Date.now() - parsed.timestamp < CACHE_DURATION) && Array.isArray(parsed.data) && parsed.data.length > 0) {
-            // Keshdan o'qilgan ma'lumotlarni ham normalize qilamiz
-            return parsed.data.map(normalizePoster);
+          if (parsed && Array.isArray(parsed.data) && parsed.data.length > 0) {
+            cachedData = parsed.data.map(normalizePoster);
+            // Agar kesh 1 daqiqadan yangi bo'lsa, darhol qaytaramiz
+            if (cachedData && Date.now() - (parsed.timestamp || 0) < CACHE_DURATION) {
+              return cachedData;
+            }
           }
         }
       } catch (e) {
@@ -88,27 +99,35 @@ export const animeApi = {
       }
     }
 
-    // Tarmoq orqali yuklash
-    const res = await fetch(`${API_BASE_URL}/api/xotira/anime.json`);
-    if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-    const json = await res.json();
-    const raw: any[] = Array.isArray(json) ? json : (json.data || []);
+    try {
+      // Tarmoq orqali yuklash
+      const res = await fetch(`${API_BASE_URL}/api/xotira/anime.json`);
+      if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+      const json = await res.json();
+      const raw: any[] = Array.isArray(json) ? json : (json.data || []);
 
-    // Poster maydonini normalize qilamiz — qaysi nom bilan kelishidan qat'i nazar
-    const data = raw.map(normalizePoster);
+      // Poster maydonini normalize qilamiz — qaysi nom bilan kelishidan qat'i nazar
+      const data = raw.map(normalizePoster);
 
-    if (typeof window !== 'undefined' && data.length > 0) {
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({
-          timestamp: Date.now(),
-          data,
-        }));
-      } catch (e) {
-        console.warn('Cache write error:', e);
+      if (typeof window !== 'undefined' && data.length > 0) {
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            timestamp: Date.now(),
+            data,
+          }));
+        } catch (e) {
+          console.warn('Cache write error:', e);
+        }
       }
-    }
 
-    return data;
+      return data;
+    } catch (fetchErr) {
+      // Tarmoqda xatolik bo'lsa, mavjud keshdan foydalanamiz
+      if (cachedData && cachedData.length > 0) {
+        return cachedData;
+      }
+      throw fetchErr;
+    }
   },
 };
 
