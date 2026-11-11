@@ -15,6 +15,7 @@ import {
   ArrowDownAZ 
 } from 'lucide-react';
 import { useAnimeData } from '@/context/AnimeDataContext';
+import { getPosterUrl, handlePosterError } from '@/lib/poster';
 
 export default function AnimesPage() {
   const { allAnimes, isInitialLoaded } = useAnimeData();
@@ -599,7 +600,7 @@ export default function AnimesPage() {
           {displayedAnimes.map((anime) => {
             const id = anime.anime_id || anime.id;
             const title = anime.title_uz || anime.title_en;
-            const poster = anime.poster_r2_url || anime.poster;
+            const poster = getPosterUrl(anime);
             const rawRating = Number(anime.average_rating || anime.rating || 0);
             const ratingText = rawRating > 0 ? rawRating.toFixed(1) : '0';
             
@@ -623,10 +624,7 @@ export default function AnimesPage() {
                     alt={title}
                     loading="lazy"
                     className="w-full h-full object-cover object-center group-hover/card:scale-105 transition-transform duration-300 pointer-events-none"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=400&q=80';
-                    }}
+                    onError={handlePosterError}
                   />
 
                   {/* Top Badges */}

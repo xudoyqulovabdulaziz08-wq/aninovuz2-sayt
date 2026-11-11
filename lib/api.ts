@@ -2,6 +2,7 @@ import axios from 'axios';
 import { ApiResponse, HomepageData, GenreItem, DubberItem, AnimeDetail, AnimeBase, UserProfile, LoginResponse } from '@/types/anime/anime.types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://aninovuz-backend.xudoyqulovabdulaziz08.workers.dev';
+const CDN_BASE = 'https://cdn.aninov.uz/posters';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -10,6 +11,34 @@ export const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+/**
+ * Backenddan kelayotgan anime obyektidagi poster maydonini normalize qilish.
+ * /api/xotira/anime.json va /api/homepage endpointlari turli maydon nomlari qaytarishi mumkin.
+ */
+function normalizePoster(anime: any): any {
+  if (anime.poster_r2_url && anime.poster_r2_url.startsWith('http')) {
+    return anime;
+  }
+  // Alternativ maydon nomlarini tekshirish
+  const url =
+    anime.poster_url ||
+    anime.poster ||
+    anime.image ||
+    anime.thumbnail;
+
+  if (url && typeof url === 'string' && url.startsWith('http')) {
+    return { ...anime, poster_r2_url: url };
+  }
+
+  // Oxirgi variant: anime_id yoki id orqali CDN dan qurish
+  const id = anime.anime_id || anime.id;
+  if (id) {
+    return { ...anime, poster_r2_url: `${CDN_BASE}/${id}.jpg` };
+  }
+
+  return anime;
+}
 
 const CACHE_KEY = 'aninovuz_all_animes_cache';
 const CACHE_DURATION = 15 * 60 * 1000; // 15 daqiqa (ms)
@@ -50,7 +79,8 @@ export const animeApi = {
         if (cachedStr) {
           const parsed = JSON.parse(cachedStr);
           if (parsed && parsed.timestamp && (Date.now() - parsed.timestamp < CACHE_DURATION) && Array.isArray(parsed.data) && parsed.data.length > 0) {
-            return parsed.data;
+            // Keshdan o'qilgan ma'lumotlarni ham normalize qilamiz
+            return parsed.data.map(normalizePoster);
           }
         }
       } catch (e) {
@@ -62,7 +92,10 @@ export const animeApi = {
     const res = await fetch(`${API_BASE_URL}/api/xotira/anime.json`);
     if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
     const json = await res.json();
-    const data: any[] = Array.isArray(json) ? json : (json.data || []);
+    const raw: any[] = Array.isArray(json) ? json : (json.data || []);
+
+    // Poster maydonini normalize qilamiz — qaysi nom bilan kelishidan qat'i nazar
+    const data = raw.map(normalizePoster);
 
     if (typeof window !== 'undefined' && data.length > 0) {
       try {

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Play, Star, Calendar, ArrowLeft, Award, MessageSquare, Send, Sparkles, Mic } from 'lucide-react';
 import Link from 'next/link';
 import { AnimeRowSection } from '@/components/anime/AnimeRowSection';
+import { getPosterUrl, handlePosterError } from '@/lib/poster';
 
 interface AnimeDetailViewProps {
   animeDetail: any;
@@ -74,7 +75,7 @@ export function AnimeDetailView({ animeDetail }: AnimeDetailViewProps) {
     anime_id: item.anime_id || item.id,
   }));
 
-  const posterSrc = animeDetail.poster_r2_url || animeDetail.poster;
+  const posterSrc = getPosterUrl(animeDetail);
   const animeTitle = animeDetail.title_uz || animeDetail.title_en || 'Anime';
 
   return (
@@ -107,6 +108,7 @@ export function AnimeDetailView({ animeDetail }: AnimeDetailViewProps) {
               alt={`${animeTitle} o'zbek tilida poster`}
               className="w-full h-full object-cover object-top"
               loading="eager"
+              onError={handlePosterError}
             />
           </div>
 
@@ -200,6 +202,7 @@ export function AnimeDetailView({ animeDetail }: AnimeDetailViewProps) {
               alt={`${animeTitle} o'zbek tilida poster`}
               className="w-full h-full object-cover"
               loading="eager"
+              onError={handlePosterError}
             />
           </div>
 

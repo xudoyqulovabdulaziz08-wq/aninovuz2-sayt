@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Play, Star, ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import { AnimeBase } from '@/types/anime/anime.types';
+import { getPosterUrl, handlePosterError } from '@/lib/poster';
 
 interface HeroSliderProps {
   items: AnimeBase[];
@@ -79,6 +80,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ items }) => {
   const rawRating = Number(current.average_rating || 0);
   const ratingText = rawRating > 0 ? rawRating.toFixed(1) : '0';
   const typeAnime = current.type || 'TV SERIES';
+  const currentPoster = getPosterUrl(current);
 
   return (
     <div className="relative w-full rounded-2xl overflow-hidden bg-[#0a0a0c] border border-white/5 shadow-2xl mb-8 select-none">
@@ -88,16 +90,13 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ items }) => {
       {/* Poster occupies full background, text/details overlaid on top, compact rating on top-right */}
       {/* ========================================================================= */}
       <div className="relative lg:hidden w-full min-h-[440px] sm:min-h-[480px] flex flex-col justify-end p-4 sm:p-6 overflow-hidden">
-        {/* Full-bleed Background Poster */}
-        {current.poster_r2_url && (
+      {/* MOBILE: Full-bleed Background Poster */}
+        {currentPoster && (
           <img
-            src={current.poster_r2_url}
+            src={currentPoster}
             alt={current.title_uz || current.title_en}
             className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-all duration-700"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&q=80';
-            }}
+            onError={handlePosterError}
           />
         )}
 
@@ -206,25 +205,22 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ items }) => {
       {/* 2. DESKTOP BANNER (3-Column layout on lg and up) */}
       {/* ========================================================================= */}
       <div className="hidden lg:flex relative z-10 w-full flex-row items-stretch gap-6 min-h-[360px] p-5">
-        {/* Deep Dark Ambient Glow */}
-        {current.poster_r2_url && (
+        {/* DESKTOP: Deep Dark Ambient Glow */}
+        {currentPoster && (
           <div
             className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-10 scale-110 pointer-events-none transition-all duration-1000"
-            style={{ backgroundImage: `url(${current.poster_r2_url})` }}
+            style={{ backgroundImage: `url(${currentPoster})` }}
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-[#0a0a0c] pointer-events-none" />
 
-        {/* 1. LEFT COLUMN: Main Poster */}
+        {/* DESKTOP: Left Column - Main Poster */}
         <div className="relative w-52 md:w-56 aspect-[3/4] rounded-xl overflow-hidden shadow-2xl shrink-0 border border-white/10 group z-10">
           <img
-            src={current.poster_r2_url}
+            src={currentPoster}
             alt={current.title_uz || current.title_en}
             className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 pointer-events-none"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&q=80';
-            }}
+            onError={handlePosterError}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-40" />
         </div>
